@@ -3,6 +3,7 @@ import pandas as pd
 from io import BytesIO
 from indic_transliteration.sanscript import SCHEMES
 from indic_transliteration.sanscript import transliterate, DEVANAGARI
+import traceback
 
 st.title("Hindi to Roman Transliteration, Dr. Marcesse")
 
@@ -44,5 +45,8 @@ if uploaded_file is not None:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+
     except Exception as e:
-        st.error(f"Error processing file: {e}")
+        st.error("❌ Error processing file:")
+        st.text(traceback.format_exc())
+
