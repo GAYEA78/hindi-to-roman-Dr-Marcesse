@@ -1,14 +1,27 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-from indic_transliteration.sanscript import SCHEMES
-from indic_transliteration.sanscript import transliterate, DEVANAGARI
 import traceback
 
-st.title("Hindi to Roman Transliteration, Dr. Marcesse")
+from indic_transliteration.sanscript import (
+    transliterate,
+    DEVANAGARI,
+    ITRANS, HK, IAST, SLP1, VELTHUIS
+)
 
-available_schemes = ["ITRANS", "HK", "IAST", "SLP1", "VELTHUIS"]
-selected_scheme = st.selectbox("Select Romanization Scheme:", available_schemes, index=0)
+st.title("Hindi to Roman Transliteration – Dr. Marcesse, By Arona Gaye")
+
+# Mapping
+scheme_options = {
+    "ITRANS": ITRANS,
+    "HK": HK,
+    "IAST": IAST,
+    "SLP1": SLP1,
+    "VELTHUIS": VELTHUIS
+}
+
+selected_label = st.selectbox("Select Romanization Scheme:", list(scheme_options.keys()))
+selected_scheme = scheme_options[selected_label]
 
 uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
 
@@ -18,6 +31,7 @@ def transliterate_dataframe(df, scheme):
             df[col] = df[col].astype(str).apply(lambda x: transliterate(x, DEVANAGARI, scheme))
     return df
 
+#Converts DataFrame to Excel file in memory
 def to_excel_bytes(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -25,6 +39,7 @@ def to_excel_bytes(df):
     output.seek(0)
     return output
 
+#App logic
 if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
@@ -41,12 +56,10 @@ if uploaded_file is not None:
         st.download_button(
             label="Download Transliterated Excel",
             data=excel_data,
-            file_name=f"transliterated_{selected_scheme.lower()}.xlsx",
+            file_name=f"transliterated_{selected_label.lower()}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-
-    except Exception as e:
+    except Exception:
         st.error("❌ Error processing file:")
         st.text(traceback.format_exc())
-
