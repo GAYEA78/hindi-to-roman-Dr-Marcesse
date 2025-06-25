@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 import traceback
+import os
 
 from indic_transliteration.sanscript import (
     transliterate,
@@ -23,15 +24,27 @@ scheme_options = {
 selected_label = st.selectbox("Select Romanization Scheme:", list(scheme_options.keys()))
 selected_scheme = scheme_options[selected_label]
 
-uploaded_file = st.file_uploader("Upload your Excel file (.xlsx)", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload your file (.xlsx, .csv, .txt)", type=["xlsx", "csv", "txt"])
 
+# Function to load file
+@st.cache_data
+def load_file(file, name):
+    ext = os.path.splitext(name)[1].lower()
+    if ext == '.xlsx':
+        return pd.read_excel(file)
+    elif ext in ['.csv', '.txt']:
+        return pd.read_csv(file, encoding='utf-8', delimiter=None)
+    else:
+        raise ValueError("Unsupported file format")
+
+# Transliteration
 def transliterate_dataframe(df, scheme):
     for col in df.columns:
         if df[col].dtype == object:
             df[col] = df[col].astype(str).apply(lambda x: transliterate(x, DEVANAGARI, scheme))
     return df
 
-#Converts DataFrame to Excel file in memory
+# Converts DataFrame to Excel bytes
 def to_excel_bytes(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -39,17 +52,17 @@ def to_excel_bytes(df):
     output.seek(0)
     return output
 
-#App logic
+# App Logic
 if uploaded_file is not None:
     try:
-        df = pd.read_excel(uploaded_file)
-        st.subheader("Original Data Preview")
-        st.dataframe(df.head())
+        df = load_file(uploaded_file, uploaded_file.name)
+        st.subheader("Original Data Preview (Top 100 rows)")
+        st.dataframe(df.head(100))
 
-        df_transliterated = transliterate_dataframe(df, selected_scheme)
+        df_transliterated = transliterate_dataframe(df.copy(), selected_scheme)
 
-        st.subheader("Transliterated Data Preview")
-        st.dataframe(df_transliterated.head())
+        st.subheader("Transliterated Data Preview (Top 100 rows)")
+        st.dataframe(df_transliterated.head(100))
 
         excel_data = to_excel_bytes(df_transliterated)
 
@@ -61,5 +74,5 @@ if uploaded_file is not None:
         )
 
     except Exception:
-        st.error("❌ Error processing file:")
+        st.error(" Error processing file:")
         st.text(traceback.format_exc())
