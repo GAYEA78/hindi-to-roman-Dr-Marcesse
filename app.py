@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-import traceback
+import zipfile
 import os
+import traceback
 
 from indic_transliteration.sanscript import (
     transliterate,
@@ -24,9 +25,11 @@ scheme_options = {
 selected_label = st.selectbox("Select Romanization Scheme:", list(scheme_options.keys()))
 selected_scheme = scheme_options[selected_label]
 
-uploaded_file = st.file_uploader("Upload your file (.xlsx, .csv, .txt)", type=["xlsx", "csv", "txt"])
+uploaded_file = st.file_uploader(
+    "Upload your file (.xlsx, .csv, .txt, .zip)", 
+    type=["xlsx", "csv", "txt", "zip"]
+)
 
-# Function to load file
 @st.cache_data
 def load_file(file, name):
     ext = os.path.splitext(name)[1].lower()
@@ -37,14 +40,12 @@ def load_file(file, name):
     else:
         raise ValueError("Unsupported file format")
 
-# Transliteration
 def transliterate_dataframe(df, scheme):
     for col in df.columns:
         if df[col].dtype == object:
             df[col] = df[col].astype(str).apply(lambda x: transliterate(x, DEVANAGARI, scheme))
     return df
 
-# Converts DataFrame to Excel bytes
 def to_excel_bytes(df):
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -52,16 +53,29 @@ def to_excel_bytes(df):
     output.seek(0)
     return output
 
-# App Logic
+# App logic
 if uploaded_file is not None:
     try:
-        df = load_file(uploaded_file, uploaded_file.name)
-        st.subheader("Original Data Preview (Top 100 rows)")
+        filename = uploaded_file.name
+
+        # Handle .zip files
+        if filename.endswith(".zip"):
+            with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
+                file_list = zip_ref.namelist()
+                if not file_list:
+                    raise ValueError("The ZIP file is empty.")
+                st.info(f"Extracting: {file_list[0]}")
+                with zip_ref.open(file_list[0]) as extracted_file:
+                    df = load_file(extracted_file, file_list[0])
+        else:
+            df = load_file(uploaded_file, filename)
+
+        st.subheader("Original Data Preview (Top 100 Rows)")
         st.dataframe(df.head(100))
 
         df_transliterated = transliterate_dataframe(df.copy(), selected_scheme)
 
-        st.subheader("Transliterated Data Preview (Top 100 rows)")
+        st.subheader("Transliterated Data Preview (Top 100 Rows)")
         st.dataframe(df_transliterated.head(100))
 
         excel_data = to_excel_bytes(df_transliterated)
