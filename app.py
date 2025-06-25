@@ -13,7 +13,7 @@ from indic_transliteration.sanscript import (
 
 st.title("Hindi to Roman Transliteration – Dr. Marcesse, By Arona Gaye")
 
-# Mapping
+# Map
 scheme_options = {
     "ITRANS": ITRANS,
     "HK": HK,
