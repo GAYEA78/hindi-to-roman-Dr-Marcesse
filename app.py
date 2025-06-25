@@ -30,7 +30,7 @@ uploaded_file = st.file_uploader(
     type=["xlsx", "csv", "txt", "zip"]
 )
 
-@st.cache_data
+# Remove cache to support in-memory zip contents
 def load_file(file, name):
     ext = os.path.splitext(name)[1].lower()
     if ext == '.xlsx':
@@ -64,9 +64,10 @@ if uploaded_file is not None:
                 file_list = zip_ref.namelist()
                 if not file_list:
                     raise ValueError("The ZIP file is empty.")
-                st.info(f"Extracting: {file_list[0]}")
-                with zip_ref.open(file_list[0]) as extracted_file:
-                    df = load_file(extracted_file, file_list[0])
+                first_file = file_list[0]
+                st.info(f"Extracting: {first_file}")
+                with zip_ref.open(first_file) as extracted_file:
+                    df = load_file(extracted_file, first_file)
         else:
             df = load_file(uploaded_file, filename)
 
